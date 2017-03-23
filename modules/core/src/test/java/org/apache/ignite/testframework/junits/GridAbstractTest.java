@@ -851,11 +851,12 @@ public abstract class GridAbstractTest extends TestCase {
 
         Ignite ignite = null;
 
-        for (int i = 0; i < cnt; i++)
+        for (int i = 0; i < cnt; i++) {
             if (ignite == null)
                 ignite = startGridWithSpringCtx(i, client, cfgUrl);
             else
                 startGridWithSpringCtx(i, client, cfgUrl);
+        }
 
         checkTopology(cnt);
 
@@ -1890,7 +1891,7 @@ public abstract class GridAbstractTest extends TestCase {
      * @param store Store.
      */
     protected <T> Factory<T> singletonFactory(T store) {
-        return notSerializableProxy(new FactoryBuilder.SingletonFactory<T>(store), Factory.class);
+        return notSerializableProxy(new FactoryBuilder.SingletonFactory<>(store), Factory.class);
     }
 
     /**
@@ -2210,7 +2211,8 @@ public abstract class GridAbstractTest extends TestCase {
     }
 
     /** */
-    public static abstract class TestIgniteIdxCallable<R> implements Serializable {
+    public abstract static class TestIgniteIdxCallable<R> implements Serializable {
+        /** */
         @IgniteInstanceResource
         protected Ignite ignite;
 

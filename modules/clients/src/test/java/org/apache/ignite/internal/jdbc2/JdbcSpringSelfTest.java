@@ -17,14 +17,19 @@
 
 package org.apache.ignite.internal.jdbc2;
 
-import org.apache.ignite.internal.IgniteEx;
-import org.apache.ignite.testframework.GridTestUtils;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import javax.sql.DataSource;
+import org.apache.ignite.internal.IgniteComponentType;
+import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.processors.resource.GridResourceIoc;
+import org.apache.ignite.internal.util.spring.IgniteSpringHelper;
+import org.apache.ignite.resources.SpringApplicationContextResource;
+import org.apache.ignite.testframework.GridTestUtils;
 
 import static org.apache.ignite.IgniteJdbcDriver.CFG_URL_PREFIX;
 
@@ -35,25 +40,25 @@ public class JdbcSpringSelfTest extends JdbcConnectionSelfTest {
     /** Grid count. */
     private static final int GRID_CNT = 2;
 
-    /** Ignite configuration URL. */
-    private static final String CFG_URL = "modules/clients/src/test/config/jdbc-config-cache-store.xml";
+    /** {@inheritDoc} */
+    @Override protected String configURL() {
+        return "modules/clients/src/test/config/jdbc-config-cache-store.xml";
+    }
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
-        startGridsWithSpringCtx(GRID_CNT, false, CFG_URL);
+        startGridsWithSpringCtx(GRID_CNT, false, configURL());
 
         Class.forName("org.apache.ignite.IgniteJdbcDriver");
     }
 
-    /**
-     * @throws Exception If failed.
-     */
+    /** {@inheritDoc} */
     @Override public void testClientNodeId() throws Exception {
-        IgniteEx client = (IgniteEx) startGridWithSpringCtx(getTestGridName(), true, CFG_URL);
+        IgniteEx client = (IgniteEx) startGridWithSpringCtx(getTestGridName(), true, configURL());
 
         UUID clientId = client.localNode().id();
 
-        final String url = CFG_URL_PREFIX + "nodeId=" + clientId + '@' + CFG_URL;
+        final String url = CFG_URL_PREFIX + "nodeId=" + clientId + '@' + configURL();
 
         GridTestUtils.assertThrows(
                 log,
@@ -67,5 +72,44 @@ public class JdbcSpringSelfTest extends JdbcConnectionSelfTest {
                 SQLException.class,
                 "Failed to establish connection with node (is it a server node?): " + clientId
         );
+    }
+
+    /**
+     * Special class to test Spring context injection.
+     */
+    private static class TestInjectTarget {
+        /** */
+        @SpringApplicationContextResource
+        private Object appCtx;
+    }
+
+    /**
+     * Test that we have valid Spring context and also could create beans from it.
+     *
+     * @throws Exception If test failed.
+     */
+    public void testSpringBean() throws Exception {
+        String url = CFG_URL_PREFIX + configURL();
+
+        // Create connection.
+        try (Connection conn = DriverManager.getConnection(url)) {
+            assertNotNull(conn);
+
+            TestInjectTarget target = new TestInjectTarget();
+
+            IgniteKernal kernal = (IgniteKernal)((JdbcConnection)conn).ignite();
+
+            // Inject Spring context.
+            kernal.context().resource().inject(target, GridResourceIoc.AnnotationSet.GENERIC);
+
+            assertNotNull(target.appCtx);
+
+            IgniteSpringHelper spring = IgniteComponentType.SPRING.create(false);
+
+            // Load bean by name.
+            DataSource ds = spring.loadBeanFromAppContext(target.appCtx, "dsTest");
+
+            assertNotNull(ds);
+        }
     }
 }
