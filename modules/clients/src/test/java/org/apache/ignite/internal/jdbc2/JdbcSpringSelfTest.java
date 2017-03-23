@@ -109,7 +109,7 @@ public class JdbcSpringSelfTest extends JdbcConnectionSelfTest {
 
             IgniteKernal kernal = (IgniteKernal)((JdbcConnection)conn).ignite();
 
-            // Inject Spring context.
+            // Inject Spring context to test object.
             kernal.context().resource().inject(target, GridResourceIoc.AnnotationSet.GENERIC);
 
             assertNotNull(target.appCtx);
