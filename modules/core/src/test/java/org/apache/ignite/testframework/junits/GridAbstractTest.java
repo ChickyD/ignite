@@ -859,7 +859,7 @@ public abstract class GridAbstractTest extends TestCase {
      * @throws Exception If failed.
      */
     protected Ignite startGridWithSpringCtx(int idx, boolean client, String cfgUrl) throws Exception {
-        return startGridWithSpringCtx(getTestGridName(idx), client, cfgUrl);
+        return startGridWithSpringCtx(getTestIgniteInstanceName(idx), client, cfgUrl);
     }
 
     /**
